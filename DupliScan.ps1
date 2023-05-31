@@ -1,17 +1,23 @@
 $Host.UI.RawUI.WindowTitle = "Windows Powershell " + $Host.Version;
 
+if (-not (Test-Path -Path ".\DupliScan.log")) {
+    New-Item -Path ".\DupliScan.log" -ItemType File -Force | Out-Null
+}
+
+Add-Content -Path ".\DupliScan.log" -Value "== DupliScan Log =="
+
 Write-Host ""
-Write-Host -ForegroundColor White " ______"
-Write-Host -ForegroundColor White -NoNewline "| __   \	"
+Write-Host -ForegroundColor White "     ______"
+Write-Host -ForegroundColor White -NoNewline "    | __   \	"
 Write-Host -ForegroundColor Cyan -NoNewline "DupliScan " 
 Write-Host -ForegroundColor DarkCyan "0.1.1"
-Write-Host -ForegroundColor White -NoNewline "| _ __  |	"
+Write-Host -ForegroundColor White -NoNewline "    | _ __  |	"
 Write-Host -ForegroundColor DarkGreen "a duplicate file scanner by simonrenggli1"
-Write-Host -ForegroundColor White -NoNewline "| ____  |	"
+Write-Host -ForegroundColor White -NoNewline "    | ____  |	"
 Write-Host -ForegroundColor DarkGreen "maintained by simonrenggli1"
-Write-Host -ForegroundColor White -NoNewline "| __ _  |	"
+Write-Host -ForegroundColor White -NoNewline "    | __ _  |	"
 Write-Host -ForegroundColor DarkMagenta "https://github.com/simonrenggli1/dupliscan"
-Write-Host -ForegroundColor White "|_______|"
+Write-Host -ForegroundColor White "    |_______|"
 Write-Host ""
 
 if ([System.Environment]::OSVersion.Version.Major -lt 6) {
@@ -26,12 +32,17 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     Write-Host -ForegroundColor Yellow -NoNewline "]"
     Write-Host -ForegroundColor Yellow -NoNewline " Warning: Recomended to run as"
     Write-Host -ForegroundColor Red " administrator"
+    Write-Host ""
 }
 
-Write-Host "    Mode"
-Write-Host "---------------------------------------------"
-Write-Host "    1. Scan partition"
-Write-Host "    2. Scan custom directory"
+Write-Host -ForegroundColor Green "    Mode"
+Write-Host -ForegroundColor Green "---------------------------------------------"
+Write-Host -ForegroundColor Cyan -NoNewline "    1"
+Write-Host -ForegroundColor Green -NoNewline "."
+Write-Host -ForegroundColor Cyan " Scan partition"
+Write-Host -ForegroundColor Cyan -NoNewline "    2"
+Write-Host -ForegroundColor Green -NoNewline "." 
+Write-Host -ForegroundColor Cyan " Scan custom directory"
 Write-Host ""
 Write-Host -ForegroundColor Green -NoNewline "["
 Write-Host -ForegroundColor Cyan -NoNewline "+"
@@ -69,9 +80,13 @@ if ($mode -eq 1) {
     Write-Host -ForegroundColor Green "    Drive    Size"
     Write-Host -ForegroundColor Green "---------------------------------------------"
 
+    $number = 0
+    $partitionInfo = @{}
+
     foreach ($partition in $partitions) {
         $size = "{0:N2} GB" -f ($partition.Size / 1GB)
-        $number = $partition.DiskNumber + 1
+        $partitionInfo[$number] = $partition.DriveLetter
+        $number = $number + 1
         $partitionName = $partition.DriveLetter
         Write-Host -ForegroundColor Cyan -NoNewline "$number"
         Write-Host -ForegroundColor Green -NoNewline ".  "
@@ -115,55 +130,93 @@ if ($mode -eq 1) {
         exit
     }
 
-    $partitionSelected = $partitionSelected - 1
-
     Write-Host -ForegroundColor Green -NoNewline "["
     Write-Host -ForegroundColor Cyan -NoNewline "+"
     Write-Host -ForegroundColor Green -NoNewline "]"
     Write-Host -ForegroundColor Green " Scanning partition..."
     Write-Host ""
 
-    $driveLetter = $partitions[$partitionSelected].DriveLetter + ":"
-    $files = try {
-        [System.IO.Directory]::EnumerateFiles($driveLetter, "*", [System.IO.SearchOption]::AllDirectories) | ForEach-Object {
+    Add-Content -Path ".\DupliScan.log" -Value ""
+    Add-Content -Path ".\DupliScan.log" -Value "Timestamp: [$(Get-Date)]"
+    Add-Content -Path ".\DupliScan.log" -Value ""
+
+    $driveLetter = $partitionInfo[$partitionSelected - 1]
+
+    $path = $driveLetter + ":\"
+    
+
+    $fileInfo = @{}
+
+    function CheckDuplicate($filePath, $fileName, $fileSize) {
+        try {
+            $key = "$fileName-$fileSize"
+            if ($fileInfo.ContainsKey($key)) {
+                $duplicatePaths = $fileInfo[$key]
+                $duplicatePaths += $filePath
+                $fileInfo[$key] = $duplicatePaths
+            }
+            else {
+                $fileInfo[$key] = @($filePath)
+            }
+        }
+        catch {
+            Write-Host -ForegroundColor Red "[!] Error occurred while checking duplicate: $_"
+        }
+    }
+
+    try {
+        $files = Get-ChildItem -LiteralPath $path -File -Recurse
+
+        foreach ($file in $files) {
             try {
-                $_ -replace "^$([regex]::Escape($driveLetter))", ''
+                $filePath = $file.FullName
+                $fileName = $file.Name
+                $fileSize = $file.Length
+
+                CheckDuplicate -filePath $filePath -fileName $fileName -fileSize $fileSize
             }
             catch {
-                Write-Host ""
-                Write-Host -ForegroundColor Red "[!] Error accessing file: $_"
-                Write-Host ""
+                Write-Host -ForegroundColor Red "[!] Error occurred while processing file: $_"
+            }
+        }
+
+        Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+        Add-Content -Path ".\DupliScan.log" -Value "Duplicate Files Found:"
+        Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+        foreach ($key in $fileInfo.Keys) {
+            try {
+                $duplicatePaths = $fileInfo[$key]
+                if ($duplicatePaths.Count -gt 1) {
+                    Write-Host ""
+                    Write-Host -ForegroundColor Yellow -NoNewline "["
+                    Write-Host -ForegroundColor Cyan -NoNewline "+"
+                    Write-Host -ForegroundColor Yellow -NoNewline "]"
+                    Write-Host -ForegroundColor Yellow " Duplicate file: $key"
+
+                    Add-Content -Path ".\DupliScan.log" -Value ""
+                    Add-Content -Path ".\DupliScan.log" -Value "File: $key"
+                    Add-Content -Path ".\DupliScan.log" -Value "Duplicates:"
+
+                    foreach ($duplicatePath in $duplicatePaths) {
+                        Write-Host -ForegroundColor Red "[!] $duplicatePath"
+                        Add-Content -Path ".\DupliScan.log" -Value "    - $duplicatePath"
+                    }
+                }
+            }
+            catch {
+                Write-Host -ForegroundColor Red "[!] Error occurred while processing duplicate: $_"
             }
         }
     }
     catch {
-        Write-Host ""
-        Write-Host -ForegroundColor Red "[!] Error accessing directory: $driveLetter"
-        Write-Host ""
+        Write-Host -ForegroundColor Red "[!] Error occurred while scanning partition: $_"
     }
 
-    Write-Host ""
-    Write-Host -ForegroundColor Green -NoNewline "["
-    Write-Host -ForegroundColor Cyan -NoNewline "+"
-    Write-Host -ForegroundColor Green -NoNewline "]"
-    Write-Host -ForegroundColor Green -NoNewline " Found "
-    Write-Host -ForegroundColor Cyan -NoNewline $files.Count
-    Write-Host -ForegroundColor Green " files"
-    Write-Host ""
-
-    Write-Host -ForegroundColor Green -NoNewline "["
-    Write-Host -ForegroundColor Cyan -NoNewline "+"
-    Write-Host -ForegroundColor Green -NoNewline "]"
-    Write-Host -ForegroundColor Green " Scanning for duplicates..."
-    Write-Host ""
-
-    $files | Group-Object -Property { $_ } | Where-Object { $_.Count -gt 1 } | ForEach-Object {
-        Write-Host -ForegroundColor Red "[!] Duplicate file: $($_.Name)"
-    }
-
+    
     Write-Host ""
     Write-Host -ForegroundColor Green "[+] Done"
     Write-Host ""
+    exit
 }
 
 if ($mode -eq 2) {
@@ -173,7 +226,6 @@ if ($mode -eq 2) {
     Write-Host -ForegroundColor Green -NoNewline " Enter custom directory "
     $path = Read-Host " "
 
-    # Check if path is empty
     if ($path -eq "") {
         Write-Host ""
         Write-Host -ForegroundColor Red "[!] No input"
@@ -181,7 +233,6 @@ if ($mode -eq 2) {
         exit
     }
 
-    # Check if path exists
     if (-not (Test-Path $path)) {
         Write-Host ""
         Write-Host -ForegroundColor Red "[!] Path does not exist"
@@ -189,7 +240,6 @@ if ($mode -eq 2) {
         exit
     }
 
-    # Check if path is a directory
     if (-not (Test-Path $path -PathType Container)) {
         Write-Host ""
         Write-Host -ForegroundColor Red "[!] Path is not a directory"
@@ -202,6 +252,12 @@ if ($mode -eq 2) {
     Write-Host -ForegroundColor Cyan -NoNewline "+"
     Write-Host -ForegroundColor Green -NoNewline "]"
     Write-Host -ForegroundColor Green " Scanning directory..."
+
+    Add-Content -Path ".\DupliScan.log" -Value ""
+    Add-Content -Path ".\DupliScan.log" -Value "Timestamp: [$(Get-Date)]"
+    Add-Content -Path ".\DupliScan.log" -Value ""
+    Add-Content -Path ".\DupliScan.log" -Value "Directory: $path"
+    Add-Content -Path ".\DupliScan.log" -Value ""
 
     $fileInfo = @{}
 
@@ -217,7 +273,8 @@ if ($mode -eq 2) {
         }
     }
 
-    $files = Get-ChildItem -Path $path -File -Recurse
+    $path = "\\?\" + $path
+    $files = Get-ChildItem -LiteralPath $path -File -Recurse
     foreach ($file in $files) {
         $filePath = $file.FullName
         $fileName = $file.Name
@@ -226,6 +283,11 @@ if ($mode -eq 2) {
         CheckDuplicate -filePath $filePath -fileName $fileName -fileSize $fileSize
     }
 
+    Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+    Add-Content -Path ".\DupliScan.log" -Value "Duplicate Files Found:"
+    Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+    Add-Content -Path ".\DupliScan.log" -Value ""
+    
     foreach ($key in $fileInfo.Keys) {
         $duplicatePaths = $fileInfo[$key]
         if ($duplicatePaths.Count -gt 1) {
@@ -235,14 +297,24 @@ if ($mode -eq 2) {
             Write-Host -ForegroundColor Yellow -NoNewline "]"
             Write-Host -ForegroundColor Yellow " Duplicate file: $key"
 
+            Add-Content -Path ".\DupliScan.log" -Value "File: $key"
+            Add-Content -Path ".\DupliScan.log" -Value "Duplicates:"
+
             foreach ($duplicatePath in $duplicatePaths) {
                 Write-Host -ForegroundColor Red "[!] $duplicatePath"
+                Add-Content -Path ".\DupliScan.log" -Value "    - $duplicatePath"
             }
+            Add-Content -Path ".\DupliScan.log" -Value ""
         }
     }
     
     Write-Host ""
     Write-Host -ForegroundColor Green "[+] Done"
     Write-Host ""
+
+    Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+    Add-Content -Path ".\DupliScan.log" -Value "End of Duplicate Files Log"
+    Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+    Add-Content -Path ".\DupliScan.log" -Value ""
     exit
 }
