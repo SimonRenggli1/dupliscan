@@ -15,14 +15,14 @@ The best duplication scanner
 
 ## Installation
 ### Source code
-- Download and Run
+- Download and Run with PowerShell
 
 ## Introduction 
-- A KahootBot to flood Kahoot lobbys
+- The best duplicate file scanner out there
 
 ## Features
 -  It runs in the CMD
--  Not detected by KahootAntiBot
+-  It looks AWESOME!
 
 ## Issues & bug reports
 Just fill an issue and describe it. We'll check it ASAP!
