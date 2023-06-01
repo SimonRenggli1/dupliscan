@@ -1,4 +1,6 @@
+<div align="center">
 <h1>DupliScan</h1>
+</div>
 
 ----------
 ## Table of Contents
