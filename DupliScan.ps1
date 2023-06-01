@@ -1,5 +1,5 @@
 $Host.UI.RawUI.WindowTitle = "Windows Powershell " + $Host.Version;
-$version = "0.1.2"
+$version = Get-Content -Path ".\VERSION"
 
 if (-not (Test-Path -Path ".\DupliScan.log")) {
     New-Item -Path ".\DupliScan.log" -ItemType File -Force | Out-Null
@@ -90,7 +90,11 @@ try {
             $script = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/simonrenggli1/dupliscan/master/DupliScan.ps1" -UseBasicParsing
             $script = $script.Content
             $script | Out-File -FilePath ".\DupliScan.ps1" -Force
-    
+
+            $version = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/simonrenggli1/dupliscan/master/VERSION" -UseBasicParsing
+            $version = $version.Content
+            $version | Out-File -FilePath ".\VERSION" -Force
+            
             Write-Host ""
             Write-Host -ForegroundColor Green -NoNewline "["
             Write-Host -ForegroundColor Cyan -NoNewline "+"
