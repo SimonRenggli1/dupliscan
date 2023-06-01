@@ -1,10 +1,14 @@
 $Host.UI.RawUI.WindowTitle = "Windows Powershell " + $Host.Version;
+$version = "0.1.1"
 
 if (-not (Test-Path -Path ".\DupliScan.log")) {
     New-Item -Path ".\DupliScan.log" -ItemType File -Force | Out-Null
+    Add-Content -Path ".\DupliScan.log" -Value "== DupliScan Log ==" | Out-Null
 }
 
-Add-Content -Path ".\DupliScan.log" -Value "== DupliScan Log =="
+if ((Get-Content -Path ".\DupliScan.log") -eq "") {
+    Add-Content -Path ".\DupliScan.log" -Value "== DupliScan Log ==" | Out-Null
+}
 
 Write-Host ""
 Write-Host -ForegroundColor White "     ______"
@@ -35,6 +39,86 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     Write-Host ""
 }
 
+Write-Host -ForegroundColor Green -NoNewline "["
+Write-Host -ForegroundColor Cyan -NoNewline "+"
+Write-Host -ForegroundColor Green -NoNewline "]"
+Write-Host -ForegroundColor Green -NoNewline " Checking for updates..."
+Write-Host ""
+
+try {
+    $latestVersion = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/simonrenggli1/dupliscan/master/VERSION" -UseBasicParsing
+    $latestVersion = $latestVersion.Content
+
+    Write-Host -ForegroundColor Green -NoNewline "["
+    Write-Host -ForegroundColor Cyan -NoNewline "+"
+    Write-Host -ForegroundColor Green -NoNewline "]"
+    Write-Host -ForegroundColor Green -NoNewline " Current version "
+    Write-Host -ForegroundColor Cyan -NoNewline $version
+    Write-Host ""
+
+    if ($latestVersion -ne $version) {
+        Write-Host -ForegroundColor Green -NoNewline "["
+        Write-Host -ForegroundColor Cyan -NoNewline "+"
+        Write-Host -ForegroundColor Green -NoNewline "]"
+        Write-Host -ForegroundColor Green -NoNewline " Latest version "
+        Write-Host -ForegroundColor Cyan -NoNewline $latestVersion
+        Write-Host ""
+    
+        # Ask user if they want to update
+        Write-Host -ForegroundColor Green -NoNewline "["
+        Write-Host -ForegroundColor Cyan -NoNewline "+"
+        Write-Host -ForegroundColor Green -NoNewline "]"
+        Write-Host -ForegroundColor Green -NoNewline " Update now? "
+        Write-Host -ForegroundColor Green -NoNewline "("
+        Write-Host -ForegroundColor Cyan -NoNewline "y"
+        Write-Host -ForegroundColor Green -NoNewline "/"
+        Write-Host -ForegroundColor Cyan -NoNewline "n"
+        Write-Host -ForegroundColor Green -NoNewline ") "
+        $update = Read-Host " "
+    
+        if ($update -eq "y" -or $update -eq "Y") {
+            Write-Host ""
+            Write-Host -ForegroundColor Green -NoNewline "["
+            Write-Host -ForegroundColor Cyan -NoNewline "+"
+            Write-Host -ForegroundColor Green -NoNewline "]"
+            Write-Host -ForegroundColor Green -NoNewline " Updating..."
+            Write-Host ""
+    
+            $script = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/simonrenggli1/dupliscan/master/DupliScan.ps1" -UseBasicParsing
+            $script = $script.Content
+            $script | Out-File -FilePath ".\DupliScan.ps1" -Force
+    
+            Write-Host ""
+            Write-Host -ForegroundColor Green -NoNewline "["
+            Write-Host -ForegroundColor Cyan -NoNewline "+"
+            Write-Host -ForegroundColor Green -NoNewline "]"
+            Write-Host -ForegroundColor Green -NoNewline " Updated to "
+            Write-Host -ForegroundColor Cyan -NoNewline $latestVersion
+            Write-Host ""
+            exit
+        } 
+        else {
+            Write-Host -ForegroundColor Green -NoNewline "["
+            Write-Host -ForegroundColor Cyan -NoNewline "+"
+            Write-Host -ForegroundColor Green -NoNewline "]"
+            Write-Host -ForegroundColor Green -NoNewline " Skipping update"
+            Write-Host ""
+        }
+    }
+    else {
+        Write-Host -ForegroundColor Green -NoNewline "["
+        Write-Host -ForegroundColor Cyan -NoNewline "+"
+        Write-Host -ForegroundColor Green -NoNewline "]"
+        Write-Host -ForegroundColor Green -NoNewline " Up to date"
+        Write-Host ""
+    }
+}
+catch {
+    Write-Host -ForegroundColor Red "[!] Failed to check for updates"
+    Write-Host ""
+}
+
+Write-Host ""
 Write-Host -ForegroundColor Green "    Mode"
 Write-Host -ForegroundColor Green "---------------------------------------------"
 Write-Host -ForegroundColor Cyan -NoNewline "    1"
@@ -136,10 +220,6 @@ if ($mode -eq 1) {
     Write-Host -ForegroundColor Green " Scanning partition..."
     Write-Host ""
 
-    Add-Content -Path ".\DupliScan.log" -Value ""
-    Add-Content -Path ".\DupliScan.log" -Value "Timestamp: [$(Get-Date)]"
-    Add-Content -Path ".\DupliScan.log" -Value ""
-
     $driveLetter = $partitionInfo[$partitionSelected - 1]
 
     $path = $driveLetter + ":\"
@@ -180,6 +260,22 @@ if ($mode -eq 1) {
             }
         }
 
+        Add-Content -Path ".\DupliScan.log" -Value ""
+        Add-Content -Path ".\DupliScan.log" -Value "Timestamp: [$(Get-Date)]"
+        Add-Content -Path ".\DupliScan.log" -Value ""
+
+        if ($fileInfo.Count -eq 0) {
+            Write-Host ""
+            Write-Host -ForegroundColor Green -NoNewline "["
+            Write-Host -ForegroundColor Cyan -NoNewline "+"
+            Write-Host -ForegroundColor Green -NoNewline "]"
+            Write-Host -ForegroundColor Green -NoNewline " No duplicates found"
+            Write-Host ""
+
+            Add-Content -Path ".\DupliScan.log" -Value "No duplicates found"
+            exit
+        }
+
         Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
         Add-Content -Path ".\DupliScan.log" -Value "Duplicate Files Found:"
         Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
@@ -214,8 +310,16 @@ if ($mode -eq 1) {
 
     
     Write-Host ""
-    Write-Host -ForegroundColor Green "[+] Done"
+    Write-Host -ForegroundColor Green -NoNewline "["
+    Write-Host -ForegroundColor Cyan -NoNewline "+"
+    Write-Host -ForegroundColor Green -NoNewline "]"
+    Write-Host -ForegroundColor Green " Done"
     Write-Host ""
+    
+    Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+    Add-Content -Path ".\DupliScan.log" -Value "End of Duplicate Files Log"
+    Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
+    Add-Content -Path ".\DupliScan.log" -Value ""
     exit
 }
 
@@ -253,12 +357,6 @@ if ($mode -eq 2) {
     Write-Host -ForegroundColor Green -NoNewline "]"
     Write-Host -ForegroundColor Green " Scanning directory..."
 
-    Add-Content -Path ".\DupliScan.log" -Value ""
-    Add-Content -Path ".\DupliScan.log" -Value "Timestamp: [$(Get-Date)]"
-    Add-Content -Path ".\DupliScan.log" -Value ""
-    Add-Content -Path ".\DupliScan.log" -Value "Directory: $path"
-    Add-Content -Path ".\DupliScan.log" -Value ""
-
     $fileInfo = @{}
 
     function CheckDuplicate($filePath, $fileName, $fileSize) {
@@ -275,6 +373,7 @@ if ($mode -eq 2) {
 
     $path = "\\?\" + $path
     $files = Get-ChildItem -LiteralPath $path -File -Recurse
+
     foreach ($file in $files) {
         $filePath = $file.FullName
         $fileName = $file.Name
@@ -282,6 +381,12 @@ if ($mode -eq 2) {
 
         CheckDuplicate -filePath $filePath -fileName $fileName -fileSize $fileSize
     }
+
+    Add-Content -Path ".\DupliScan.log" -Value ""
+    Add-Content -Path ".\DupliScan.log" -Value "Timestamp: [$(Get-Date)]"
+    Add-Content -Path ".\DupliScan.log" -Value ""
+    Add-Content -Path ".\DupliScan.log" -Value "Directory: $path"
+    Add-Content -Path ".\DupliScan.log" -Value ""
 
     Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
     Add-Content -Path ".\DupliScan.log" -Value "Duplicate Files Found:"
@@ -309,7 +414,10 @@ if ($mode -eq 2) {
     }
     
     Write-Host ""
-    Write-Host -ForegroundColor Green "[+] Done"
+    Write-Host -ForegroundColor Green -NoNewline "["
+    Write-Host -ForegroundColor Cyan -NoNewline "+"
+    Write-Host -ForegroundColor Green -NoNewline "]"
+    Write-Host -ForegroundColor Green " Done"
     Write-Host ""
 
     Add-Content -Path ".\DupliScan.log" -Value "----------------------------------"
