@@ -386,7 +386,14 @@ if ($mode -eq 2) {
         }
     }
 
+    $path = $path.Trim()
+
+    if ($path -match "^[a-zA-Z]:$") {
+        $path = "$path\"
+    }
+
     $path = "\\?\" + $path
+
     $files = Get-ChildItem -LiteralPath $path -File -Recurse
 
     foreach ($file in $files) {
@@ -441,3 +448,4 @@ if ($mode -eq 2) {
     Add-Content -Path ".\DupliScan.log" -Value ""
     exit
 }
+
