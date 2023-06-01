@@ -1,5 +1,5 @@
 $Host.UI.RawUI.WindowTitle = "Windows Powershell " + $Host.Version;
-$version = "0.1.1"
+$version = "0.1.2"
 
 if (-not (Test-Path -Path ".\DupliScan.log")) {
     New-Item -Path ".\DupliScan.log" -ItemType File -Force | Out-Null
@@ -49,22 +49,25 @@ try {
     $latestVersion = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/simonrenggli1/dupliscan/master/VERSION" -UseBasicParsing
     $latestVersion = $latestVersion.Content
 
-    Write-Host -ForegroundColor Green -NoNewline "["
-    Write-Host -ForegroundColor Cyan -NoNewline "+"
-    Write-Host -ForegroundColor Green -NoNewline "]"
-    Write-Host -ForegroundColor Green -NoNewline " Current version "
-    Write-Host -ForegroundColor Cyan -NoNewline $version
-    Write-Host ""
+    $latestVersion = $latestVersion.Replace("`n", "")
+    $latestVersion = $latestVersion.Replace("`r", "")
 
-    if ($latestVersion -ne $version) {
+    if ($latestVersion -gt $version) {
+        Write-Host -ForegroundColor Green -NoNewline "["
+        Write-Host -ForegroundColor Cyan -NoNewline "+"
+        Write-Host -ForegroundColor Green -NoNewline "]"
+        Write-Host -ForegroundColor Green -NoNewline " Current version "
+        Write-Host -ForegroundColor Cyan -NoNewline $version
+        Write-Host ""
+
         Write-Host -ForegroundColor Green -NoNewline "["
         Write-Host -ForegroundColor Cyan -NoNewline "+"
         Write-Host -ForegroundColor Green -NoNewline "]"
         Write-Host -ForegroundColor Green -NoNewline " Latest version "
         Write-Host -ForegroundColor Cyan -NoNewline $latestVersion
         Write-Host ""
+        Write-Host ""
     
-        # Ask user if they want to update
         Write-Host -ForegroundColor Green -NoNewline "["
         Write-Host -ForegroundColor Cyan -NoNewline "+"
         Write-Host -ForegroundColor Green -NoNewline "]"
