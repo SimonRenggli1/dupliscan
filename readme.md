@@ -1,5 +1,5 @@
 <div align="center">
-![DupliScan](https://github.com/SimonRenggli1/dupliscan/assets/96227533/560eafed-7709-4667-9d1e-7144e16875c8.png)
+![DupliScan](https://github.com/SimonRenggli1/dupliscan/blob/main/DupliScanBanner.png?raw=true)
 <br>
 <h1>DupliScan</h1>
  <br>
