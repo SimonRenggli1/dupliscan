@@ -1,5 +1,4 @@
 $Host.UI.RawUI.WindowTitle = "Windows Powershell " + $Host.Version;
-$version = Get-Content -Path ".\VERSION"
 
 if (-not (Test-Path -Path ".\DupliScan.log")) {
     New-Item -Path ".\DupliScan.log" -ItemType File -Force | Out-Null
@@ -29,6 +28,15 @@ if ([System.Environment]::OSVersion.Version.Major -lt 6) {
     Write-Host ""
     exit
 }
+
+if (-not (Test-Path -Path ".\VERSION")) {
+    Write-Host -ForegroundColor Red "[!] VERSION file not found"
+    Write-Host ""
+    New-Item -Path ".\VERSION" -ItemType File -Force | Out-Null
+    Add-Content -Path ".\VERSION" -Value "0.0.0" | Out-Null
+}
+
+$version = Get-Content -Path ".\VERSION"
 
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Host -ForegroundColor Yellow -NoNewline "["
